@@ -59,7 +59,6 @@
   <div class="field">
     <label>Cliente</label>
     <input type="text" id="cliente" placeholder="Ej. Boston Virtual" />
-    <p class="hint">Escribe el nombre exacto como aparece en Notion</p>
   </div>
 
   <div class="field">
@@ -110,7 +109,7 @@
 
   <div class="field">
     <label>Descripción del request <span class="req">*</span></label>
-    <textarea id="briefing" placeholder="Describe el request con todo el detalle posible: objetivo, referencias, entregables esperados, contexto del cliente..." oninput="updateCount()"></textarea>
+    <textarea id="briefing" placeholder="Describe el request: objetivo, referencias, entregables esperados, contexto del cliente..." oninput="updateCount()"></textarea>
     <div class="char-count" id="charCount">0 caracteres</div>
     <p class="hint">Este mensaje llegará como comentario en la tarea de Notion</p>
   </div>
@@ -123,8 +122,7 @@
 </div>
 
 <script>
-  const TOKEN = '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';
-  const DB_ID = '0511f07aeac6412293ca376f46275de4';
+  const WEBHOOK_URL = 'https://hook.us1.make.com/fslku9tjznwl9x88g6x2en7vl0k3efhj';
 
   function updateCount() {
     const len = document.getElementById('briefing').value.length;
@@ -136,81 +134,43 @@
     const briefing = document.getElementById('briefing').value.trim();
 
     if (!name) { showMsg('El nombre del task es obligatorio.', 'err'); return; }
-    if (!briefing) { showMsg('El briefing es obligatorio. Describe el request.', 'err'); return; }
+    if (!briefing) { showMsg('El briefing es obligatorio.', 'err'); return; }
 
     const btn = document.getElementById('btn');
     btn.disabled = true;
     btn.innerHTML = '<div class="spin"></div> Creando tarea...';
 
-    const props = {
-      "Name": { title: [{ text: { content: name } }] },
-      "Status Global": { status: { name: "In design" } }
+    const payload = {
+      nombre: name,
+      cliente: document.getElementById('cliente').value.trim(),
+      ownerCS: document.getElementById('ownerCS').value.trim(),
+      etaCliente: document.getElementById('etaCliente').value,
+      solicitudDiseno: document.getElementById('solicitudDiseno').value,
+      etaDiseno: document.getElementById('etaDiseno').value,
+      briefing: briefing,
+      statusGlobal: 'In design',
+      disenadorOwner: 'Ale Lugo'
     };
 
-    const cliente = document.getElementById('cliente').value.trim();
-    if (cliente) props["Cliente"] = { rich_text: [{ text: { content: cliente } }] };
-
-    const ownerCS = document.getElementById('ownerCS').value.trim();
-    if (ownerCS) props["Owner CS"] = { rich_text: [{ text: { content: ownerCS } }] };
-
-    const etaCliente = document.getElementById('etaCliente').value;
-    if (etaCliente) props["ETA Cliente"] = { date: { start: etaCliente } };
-
-    const solicitud = document.getElementById('solicitudDiseno').value;
-    if (solicitud) props["Solicitud Diseño"] = { date: { start: solicitud } };
-
-    const etaDiseno = document.getElementById('etaDiseno').value;
-    if (etaDiseno) props["ETA Diseño"] = { date: { start: etaDiseno } };
-
     try {
-      const pageRes = await fetch('https://api.notion.com/v1/pages', {
+      const res = await fetch(WEBHOOK_URL, {
         method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' + TOKEN,
-          'Content-Type': 'application/json',
-          'Notion-Version': '2022-06-28'
-        },
-        body: JSON.stringify({ parent: { database_id: DB_ID }, properties: props })
-      });
-      const pageData = await pageRes.json();
-
-      if (!pageRes.ok) {
-        showMsg('Error al crear tarea: ' + (pageData.message || pageData.code), 'err');
-        resetBtn(); return;
-      }
-
-      const commentRes = await fetch('https://api.notion.com/v1/comments', {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' + TOKEN,
-          'Content-Type': 'application/json',
-          'Notion-Version': '2022-06-28'
-        },
-        body: JSON.stringify({
-          parent: { page_id: pageData.id },
-          rich_text: [{ text: { content: '📋 Briefing del request:\n\n' + briefing } }]
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
 
-      if (commentRes.ok) {
-        showMsg('✓ Tarea creada y briefing agregado como comentario en Notion', 'ok');
+      if (res.ok) {
+        showMsg('✓ Tarea creada exitosamente en Notion', 'ok');
+        ['taskName','cliente','ownerCS','etaCliente','solicitudDiseno','etaDiseno','briefing']
+          .forEach(id => document.getElementById(id).value = '');
+        updateCount();
       } else {
-        const ce = await commentRes.json();
-        showMsg('✓ Tarea creada. Comentario falló: activa "Read comments" e "Insert comments" en la integración. (' + (ce.message || ce.code) + ')', 'ok');
+        showMsg('Error al enviar. Intenta de nuevo.', 'err');
       }
-
-      ['taskName','cliente','ownerCS','etaCliente','solicitudDiseno','etaDiseno','briefing']
-        .forEach(id => document.getElementById(id).value = '');
-      updateCount();
-
     } catch(e) {
       showMsg('Error de conexión: ' + e.message, 'err');
     }
-    resetBtn();
-  }
 
-  function resetBtn() {
-    const btn = document.getElementById('btn');
     btn.disabled = false;
     btn.innerHTML = '➤ Crear tarea en Notion';
   }

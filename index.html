@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nueva tarea — Notion</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f0f; color: #e8e8e8; min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 2rem 1rem; }
+  .wrap { width: 100%; max-width: 520px; }
+  .header { margin-bottom: 2rem; }
+  .header h1 { font-size: 22px; font-weight: 600; color: #fff; margin-bottom: 5px; }
+  .header p { font-size: 14px; color: #888; }
+  .sec { font-size: 10px; font-weight: 600; color: #555; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 12px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 13px; color: #aaa; margin-bottom: 6px; }
+  .req { color: #e05c5c; margin-left: 2px; }
+  .field input, .field select {
+    width: 100%; font-size: 14px; padding: 9px 12px;
+    background: #1a1a1a; border: 1px solid #2e2e2e; border-radius: 8px;
+    color: #e8e8e8; transition: border-color .15s;
+  }
+  .field input:focus, .field select:focus { outline: none; border-color: #4a90d9; }
+  .field input::placeholder { color: #444; }
+  .hint { font-size: 11px; color: #555; margin-top: 4px; }
+  .frozen {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 12px; background: #161616; border: 1px solid #2a2a2a;
+    border-radius: 8px; font-size: 14px; color: #666;
+  }
+  .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+  .badge-design { background: #2d2060; color: #b8a9f0; }
+  .badge-owner { background: #0e3327; color: #5ecaaa; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .divider { border: none; border-top: 1px solid #1e1e1e; margin: 1.5rem 0; }
+  .btn {
+    width: 100%; padding: 11px; background: #1a5faa; color: #fff;
+    border: none; border-radius: 8px; font-size: 14px; font-weight: 500;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    gap: 8px; transition: background .15s, transform .1s;
+  }
+  .btn:hover { background: #1450a0; }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { background: #1e1e1e; color: #444; cursor: not-allowed; }
+  .msg { margin-top: 12px; padding: 10px 14px; border-radius: 8px; font-size: 13px; display: none; }
+  .msg.ok { background: #0e2e18; color: #5ecaa0; border: 1px solid #1a4a28; display: block; }
+  .msg.err { background: #2e0e0e; color: #e05c5c; border: 1px solid #4a1a1a; display: block; }
+  .spin { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.2); border-top-color: #fff; border-radius: 50%; animation: sp .7s linear infinite; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+
+  /* ---- CONFIGURA AQUÍ ---- */
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <h1>Nueva tarea</h1>
+    <p>Completa los campos para crear un task en Notion</p>
+  </div>
+
+  <div class="sec">Información general</div>
+
+  <div class="field">
+    <label>Nombre del task <span class="req">*</span></label>
+    <input type="text" id="taskName" placeholder="Ej. Diseño portada newsletter mayo" />
+  </div>
+
+  <div class="field">
+    <label>Cliente</label>
+    <input type="text" id="cliente" placeholder="Ej. Boston Virtual" />
+    <p class="hint">Escribe el nombre exacto como aparece en Notion</p>
+  </div>
+
+  <div class="field">
+    <label>Owner CS</label>
+    <input type="text" id="ownerCS" placeholder="Nombre del responsable CS" />
+  </div>
+
+  <hr class="divider">
+  <div class="sec">Diseño</div>
+
+  <div class="field">
+    <label>Status global</label>
+    <div class="frozen">
+      <span class="badge badge-design">🎨 In design</span>
+      <span style="font-size:12px;color:#444">— fijo por defecto</span>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Diseñador owner</label>
+    <div class="frozen">
+      <span class="badge badge-owner">👤 Ale Lugo</span>
+      <span style="font-size:12px;color:#444">— asignada por defecto</span>
+    </div>
+  </div>
+
+  <hr class="divider">
+  <div class="sec">Fechas</div>
+
+  <div class="row">
+    <div class="field">
+      <label>ETA Cliente</label>
+      <input type="date" id="etaCliente" />
+    </div>
+    <div class="field">
+      <label>Solicitud diseño</label>
+      <input type="date" id="solicitudDiseno" />
+    </div>
+  </div>
+
+  <div class="field">
+    <label>ETA Diseño</label>
+    <input type="datetime-local" id="etaDiseno" />
+  </div>
+
+  <button class="btn" id="btn" onclick="submitForm()">
+    ➤ Crear tarea en Notion
+  </button>
+
+  <div class="msg" id="msg"></div>
+</div>
+
+<script>
+  // =============================================
+  // CAMBIA ESTOS DOS VALORES PARA TU DB REAL
+  const TOKEN = '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';
+  const DB_ID = '0511f07aeac6412293ca376f46275de4';
+  // =============================================
+
+  async function submitForm() {
+    const name = document.getElementById('taskName').value.trim();
+    if (!name) { showMsg('El nombre del task es obligatorio.', 'err'); return; }
+
+    const btn = document.getElementById('btn');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spin"></div> Creando tarea...';
+
+    const props = {
+      "Name": { title: [{ text: { content: name } }] },
+      "Status Global": { status: { name: "In design" } }
+    };
+
+    const cliente = document.getElementById('cliente').value.trim();
+    if (cliente) props["Cliente"] = { rich_text: [{ text: { content: cliente } }] };
+
+    const ownerCS = document.getElementById('ownerCS').value.trim();
+    if (ownerCS) props["Owner CS"] = { rich_text: [{ text: { content: ownerCS } }] };
+
+    const etaCliente = document.getElementById('etaCliente').value;
+    if (etaCliente) props["ETA Cliente"] = { date: { start: etaCliente } };
+
+    const solicitud = document.getElementById('solicitudDiseno').value;
+    if (solicitud) props["Solicitud Diseño"] = { date: { start: solicitud } };
+
+    const etaDiseno = document.getElementById('etaDiseno').value;
+    if (etaDiseno) props["ETA Diseño"] = { date: { start: etaDiseno } };
+
+    try {
+      const res = await fetch('https://api.notion.com/v1/pages', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${TOKEN}`,
+          'Content-Type': 'application/json',
+          'Notion-Version': '2022-06-28'
+        },
+        body: JSON.stringify({ parent: { database_id: DB_ID }, properties: props })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showMsg('✓ Tarea creada exitosamente en Notion', 'ok');
+        ['taskName','cliente','ownerCS','etaCliente','solicitudDiseno','etaDiseno']
+          .forEach(id => document.getElementById(id).value = '');
+      } else {
+        showMsg('Error: ' + (data.message || JSON.stringify(data.code)), 'err');
+      }
+    } catch(e) {
+      showMsg('Error de conexión: ' + e.message, 'err');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '➤ Crear tarea en Notion';
+  }
+
+  function showMsg(text, type) {
+    const el = document.getElementById('msg');
+    el.textContent = text;
+    el.className = 'msg ' + type;
+  }
+</script>
+</body>
+</html>
